@@ -10,18 +10,22 @@ $graph:
       inputBinding:
         position: 1
       type: File
+
     inp2:
+      type: Directory[]
       inputBinding:
+        prefix: -PinFiles=
+        valueFrom: |
+          ${
+              function myFunction(value, index, array) {
+                  return value.path + "/*.xml";
+              }
+              return inputs.inp2.map(myFunction).join();
+          }
         position: 2
-        prefix: -PselPol=
         separate: false
-      type: string
-    inp3:
-      inputBinding:
-        position: 2
-        prefix: -PinFile=
-        separate: false
-      type: Directory
+
+
   outputs:
     results:
       outputBinding:
@@ -33,6 +37,7 @@ $graph:
         PATH: /srv/conda/envs/env_snap/snap/bin:/usr/share/java/maven/bin:/usr/share/java/maven/bin:/opt/anaconda/bin:/opt/anaconda/condabin:/opt/anaconda/bin:/usr/lib64/qt-3.3/bin:/usr/share/java/maven/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin
         PREFIX: /opt/anaconda/envs/env_snap
     ResourceRequirement: {}
+    InlineJavascriptRequirement: {}
   stderr: std.err
   stdout: std.out
 
@@ -40,40 +45,30 @@ $graph:
   doc: SNAP SAR Calibration
   id: main
   inputs:
-    polarization:
-      doc: Polarization channel 
-      label: Polarization channel 
-      type: string
     snap_graph:
       doc: SNAP Graph
       label: SNAP Graph
       type: File
-    safe:
-      doc: Sentinel-1 GRD product SAFE Directory
-      label: Sentinel-1 GRD product SAFE Directory
+    s3-inputs:
+      doc: Sentinel-3 SAFE Directory
+      label: Sentinel-3 SAFE Directory
       type: Directory[]
-  label: SNAP SAR Calibration
+  label: SNAP Level-3 binning
   outputs:
   - id: wf_outputs
     outputSource:
     - node_1/results
-    type:
-      items: Directory
-      type: array
+    type: Directory
   
   requirements:
-  - class: ScatterFeatureRequirement
   - class: SubworkflowFeatureRequirement
   
   steps:
     node_1:
       in:
         inp1: snap_graph
-        inp2: polarization
-        inp3: safe
+        inp2: s3-inputs
       out:
       - results
       run: '#clt'
-      scatter: inp3
-      scatterMethod: dotproduct
 cwlVersion: v1.0

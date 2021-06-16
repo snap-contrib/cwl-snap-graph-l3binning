@@ -1,0 +1,8 @@
+s3-inputs:
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3A_OL_2_LFR____20210531T103155_20210531T103455_20210601T160331_0179_072_222_2160_LN1_O_NT_002.SEN3' }
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3A_OL_2_LFR____20210531T103455_20210531T103755_20210601T160350_0180_072_222_2340_LN1_O_NT_002.SEN3'}
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210514T103335_20210514T103635_20210515T153746_0179_052_222_2160_LN1_O_NT_002.SEN3'}
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210514T103635_20210514T103935_20210515T153759_0179_052_222_2340_LN1_O_NT_002.SEN3' }
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210610T103340_20210610T103640_20210611T153941_0179_053_222_2160_LN1_O_NT_002.SEN3' }
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210610T103640_20210610T103940_20210611T154001_0179_053_222_2340_LN1_O_NT_002.SEN3' }
+snap_graph: {class: File, path: ./l3-binning.xml}

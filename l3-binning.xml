@@ -1,0 +1,24 @@
+<graph id="Graph">
+<version>1.0</version>
+  <node id="Read">
+    <operator>Binning</operator>
+<parameters>
+    <sourceProductPaths>$inFiles</sourceProductPaths>
+    <sourceProductFormat>Sen3</sourceProductFormat>
+    <timeFilterMethod>NONE</timeFilterMethod>
+    <numRows>20038</numRows>
+    <superSampling>1</superSampling>
+    <maxDistanceOnEarth>-1</maxDistanceOnEarth>
+    <maskExpr>true</maskExpr>
+    <aggregators>
+        <aggregator>
+            <type>MIN_MAX</type>
+            <varName>OGVI</varName>
+        </aggregator>
+    </aggregators>
+    <outputFile>level-3.dim</outputFile>
+    <metadataAggregatorName>NAME</metadataAggregatorName>
+    <planetaryGridClass>org.esa.snap.binning.support.SEAGrid</planetaryGridClass>
+</parameters>
+</node>
+</graph>

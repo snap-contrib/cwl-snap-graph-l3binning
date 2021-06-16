@@ -1,4 +1,4 @@
-# Process SNAP GPT graphs using docker and the Common Workflow Language (CWL)
+# SNAP L3-Binning using docker and the Common Workflow Language (CWL)
 
 [![Project Status: WIP – Initial development is in progress, but there has not yet been a stable, usable release suitable for the public.](https://www.repostatus.org/badges/latest/wip.svg)](https://www.repostatus.org/#wip)
 
@@ -34,8 +34,8 @@ If needed follow the additional steps described [here](https://docs.docker.com/e
 Clone this repository and build the docker image with:
 
 ```console
-git clone https://github.com/snap-contrib/cwl-snap-graph-runner.git
-cd cwl-snap-graph-runner
+git clone https://github.com/snap-contrib/cwl-snap-l3binning.git
+cd cwl-snap-l3binning
 docker build -t snap:latest -f .docker/Dockerfile .
 ```
 
@@ -55,101 +55,107 @@ docker run --rm -it snap:latest gpt -h
 
 This dumps the SNAP `gpt` utiliy help message.
 
-### Getting a few Sentinel-1 GRD acquistions
+### Getting a few Sentinel-3 OLCI Level-2 acquistions
 
-Download a couple of Sentinel-1 GRD acquisitions and unzip them.
+Download a set of Sentinel-3 OLCI Level-2 acquisitions and unzip them.
 
 ### Preparing the input parameters for the CWL step
 
 The CWL parameters file is a YAML file with an array of input directories pointing to the SAFE folders:
 
 ```yaml
-polarization: 'VV'
-snap_graph: {class: File, path: ./sar-calibration.xml}
-safe: 
-- {'class': 'Directory', 'path': '/home/fbrito/Downloads/S1A_IW_GRDH_1SDV_20210615T050457_20210615T050522_038346_048680_F42E.SAFE'}
+s3-inputs:
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3A_OL_2_LFR____20210531T103155_20210531T103455_20210601T160331_0179_072_222_2160_LN1_O_NT_002.SEN3' }
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3A_OL_2_LFR____20210531T103455_20210531T103755_20210601T160350_0180_072_222_2340_LN1_O_NT_002.SEN3'}
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210514T103335_20210514T103635_20210515T153746_0179_052_222_2160_LN1_O_NT_002.SEN3'}
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210514T103635_20210514T103935_20210515T153759_0179_052_222_2340_LN1_O_NT_002.SEN3' }
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210610T103340_20210610T103640_20210611T153941_0179_053_222_2160_LN1_O_NT_002.SEN3' }
+- {'class': 'Directory', 'path': '/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210610T103640_20210610T103940_20210611T154001_0179_053_222_2340_LN1_O_NT_002.SEN3' }
+snap_graph: {class: File, path: ./l3-binning.xml}
 ```
 
-Save this content in a file called `params.yml`.
+Save this content in a file called `s3-params.yml`.
 
 ### The SNAP Graph
 
-The file `sar-calibration.xml` contains a SNAP Graph that is parametrized with variables:
+The file `l3-binning.xml` contains a SNAP Graph that is parametrized with variables:
 
 ```xml
-<node id="Read">
-    <operator>Read</operator>
-    <sources/>
-    <parameters class="com.bc.ceres.binding.dom.XppDomElement">
-      <file>${inFile}</file>
-      <formatName>SENTINEL-1</formatName>
-    </parameters>
-  </node>
+<graph id="Graph">
+<version>1.0</version>
+  <node id="Read">
+    <operator>Binning</operator>
+<parameters>
+    <sourceProductPaths>$inFiles</sourceProductPaths>
+    <sourceProductFormat>Sen3</sourceProductFormat>
+    <timeFilterMethod>NONE</timeFilterMethod>
+    ...
 ```
 
 The CWL file will instruct `gpt` to use the value passed as a command line argument:
 
 ```yaml
-inp3:
-  inputBinding:
-    position: 2
-    prefix: -PinFile=
-    separate: false
-  type: Directory
+    inp2:
+      type: Directory[]
+      inputBinding:
+        prefix: -PinFiles=
+        valueFrom: |
+          ${
+              function myFunction(value, index, array) {
+                  return value.path + "/*.xml";
+              }
+              return inputs.inp2.map(myFunction).join();
+          }
+        position: 2
+        separate: false
 ```
+
+The Javascript short code will add `/*.xml` to each Sentinel-3 folder as this is what SNAP `gpt` expects to find in the `sourceProductPaths` SNAP Graph element.
 
 ### Run the SNAP graph with CWL in the container
 
 ```console
-cwltool gpt-sar-calibration.cwl gpt-sar-calibration-params.yml
+cwltool gpt-l3-binning.cwl s3-params.yml
 ```
 
 This will process the Sentinel-1 GRD acquisitions with an output as:
 
 ```console
 INFO /srv/conda/bin/cwltool 3.0.20210319143721
-INFO Resolved 'gpt-sar-calibration.cwl' to 'file:///home/fbrito/work/cwl-snap-graph-runner/gpt-sar-calibration.cwl'
+INFO Resolved 'gpt-l3-binning.cwl' to 'file:///home/fbrito/work/cwl-snap-graph-l3binning/gpt-l3-binning.cwl'
 INFO [workflow ] start
 INFO [workflow ] starting step node_1
 INFO [step node_1] start
-INFO [job node_1] /tmp/9ti8kfl0$ docker \
+INFO [job node_1] /tmp/tizozsjv$ docker \
     run \
     -i \
-    --mount=type=bind,source=/tmp/9ti8kfl0,target=/zefIeZ \
-    --mount=type=bind,source=/tmp/f2jfo_i7,target=/tmp \
-    --mount=type=bind,source=/home/fbrito/work/cwl-snap-graph-runner/sar-calibration.xml,target=/var/lib/cwl/stg52f9db5f-3988-4923-97d6-8f02f538b99c/sar-calibration.xml,readonly \
-    --mount=type=bind,source=/home/fbrito/Downloads/S1A_IW_GRDH_1SDV_20210615T050457_20210615T050522_038346_048680_F42E.SAFE,target=/var/lib/cwl/stg83984c21-caf6-4b14-b2b0-893583bcd1b9/S1A_IW_GRDH_1SDV_20210615T050457_20210615T050522_038346_048680_F42E.SAFE,readonly \
-    --workdir=/zefIeZ \
+    --mount=type=bind,source=/tmp/tizozsjv,target=/SOSFSH \
+    --mount=type=bind,source=/tmp/jk258rnl,target=/tmp \
+    --mount=type=bind,source=/home/fbrito/work/cwl-snap-graph-l3binning/l3-binning.xml,target=/var/lib/cwl/stg1f56340e-7b79-4155-b572-a1165ebe8f89/l3-binning.xml,readonly \
+    --mount=type=bind,source=/home/fbrito/Downloads/s3-binning-data/S3A_OL_2_LFR____20210531T103155_20210531T103455_20210601T160331_0179_072_222_2160_LN1_O_NT_002.SEN3,target=/var/lib/cwl/stg7e6a584b-cfb7-4297-9578-9e69b16a736d/S3A_OL_2_LFR____20210531T103155_20210531T103455_20210601T160331_0179_072_222_2160_LN1_O_NT_002.SEN3,readonly \
+    --mount=type=bind,source=/home/fbrito/Downloads/s3-binning-data/S3A_OL_2_LFR____20210531T103455_20210531T103755_20210601T160350_0180_072_222_2340_LN1_O_NT_002.SEN3,target=/var/lib/cwl/stg223ec947-2167-4a3e-81f7-12e101e8bc84/S3A_OL_2_LFR____20210531T103455_20210531T103755_20210601T160350_0180_072_222_2340_LN1_O_NT_002.SEN3,readonly \
+    --mount=type=bind,source=/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210514T103335_20210514T103635_20210515T153746_0179_052_222_2160_LN1_O_NT_002.SEN3,target=/var/lib/cwl/stgb500d30b-9094-4f63-a0e6-a4d4e65a63ed/S3B_OL_2_LFR____20210514T103335_20210514T103635_20210515T153746_0179_052_222_2160_LN1_O_NT_002.SEN3,readonly \
+    --mount=type=bind,source=/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210514T103635_20210514T103935_20210515T153759_0179_052_222_2340_LN1_O_NT_002.SEN3,target=/var/lib/cwl/stgf1da9966-28c5-4ff2-bc89-c20bb344c78e/S3B_OL_2_LFR____20210514T103635_20210514T103935_20210515T153759_0179_052_222_2340_LN1_O_NT_002.SEN3,readonly \
+    --mount=type=bind,source=/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210610T103340_20210610T103640_20210611T153941_0179_053_222_2160_LN1_O_NT_002.SEN3,target=/var/lib/cwl/stg79046bae-49d5-4b81-a963-8032fba09127/S3B_OL_2_LFR____20210610T103340_20210610T103640_20210611T153941_0179_053_222_2160_LN1_O_NT_002.SEN3,readonly \
+    --mount=type=bind,source=/home/fbrito/Downloads/s3-binning-data/S3B_OL_2_LFR____20210610T103640_20210610T103940_20210611T154001_0179_053_222_2340_LN1_O_NT_002.SEN3,target=/var/lib/cwl/stg532d9c2b-ec54-4553-96e7-3e0028d0dc3a/S3B_OL_2_LFR____20210610T103640_20210610T103940_20210611T154001_0179_053_222_2340_LN1_O_NT_002.SEN3,readonly \
+    --workdir=/SOSFSH \
     --read-only=true \
     --log-driver=none \
     --user=1000:1000 \
     --rm \
     --env=TMPDIR=/tmp \
-    --env=HOME=/zefIeZ \
-    --cidfile=/tmp/sub7uryv/20210616102403-516906.cid \
+    --env=HOME=/SOSFSH \
+    --cidfile=/tmp/3nq038sj/20210616150736-020082.cid \
     --env=PATH=/srv/conda/envs/env_snap/snap/bin:/usr/share/java/maven/bin:/usr/share/java/maven/bin:/opt/anaconda/bin:/opt/anaconda/condabin:/opt/anaconda/bin:/usr/lib64/qt-3.3/bin:/usr/share/java/maven/bin:/usr/local/bin:/usr/bin:/usr/local/sbin:/usr/sbin \
     --env=PREFIX=/opt/anaconda/envs/env_snap \
     snap:latest \
     gpt \
-    /var/lib/cwl/stg52f9db5f-3988-4923-97d6-8f02f538b99c/sar-calibration.xml \
-    -PselPol=VV \
-    -PinFile=/var/lib/cwl/stg83984c21-caf6-4b14-b2b0-893583bcd1b9/S1A_IW_GRDH_1SDV_20210615T050457_20210615T050522_038346_048680_F42E.SAFE > /tmp/9ti8kfl0/std.out 2> /tmp/9ti8kfl0/std.err
-INFO [job node_1] Max memory used: 7174MiB
+    /var/lib/cwl/stg1f56340e-7b79-4155-b572-a1165ebe8f89/l3-binning.xml \
+    -PinFiles=/var/lib/cwl/stg7e6a584b-cfb7-4297-9578-9e69b16a736d/S3A_OL_2_LFR____20210531T103155_20210531T103455_20210601T160331_0179_072_222_2160_LN1_O_NT_002.SEN3/*.xml,/var/lib/cwl/stg223ec947-2167-4a3e-81f7-12e101e8bc84/S3A_OL_2_LFR____20210531T103455_20210531T103755_20210601T160350_0180_072_222_2340_LN1_O_NT_002.SEN3/*.xml,/var/lib/cwl/stgb500d30b-9094-4f63-a0e6-a4d4e65a63ed/S3B_OL_2_LFR____20210514T103335_20210514T103635_20210515T153746_0179_052_222_2160_LN1_O_NT_002.SEN3/*.xml,/var/lib/cwl/stgf1da9966-28c5-4ff2-bc89-c20bb344c78e/S3B_OL_2_LFR____20210514T103635_20210514T103935_20210515T153759_0179_052_222_2340_LN1_O_NT_002.SEN3/*.xml,/var/lib/cwl/stg79046bae-49d5-4b81-a963-8032fba09127/S3B_OL_2_LFR____20210610T103340_20210610T103640_20210611T153941_0179_053_222_2160_LN1_O_NT_002.SEN3/*.xml,/var/lib/cwl/stg532d9c2b-ec54-4553-96e7-3e0028d0dc3a/S3B_OL_2_LFR____20210610T103640_20210610T103940_20210611T154001_0179_053_222_2340_LN1_O_NT_002.SEN3/*.xml > /tmp/tizozsjv/std.out 2> /tmp/tizozsjv/std.err
+INFO [job node_1] Max memory used: 9911MiB
 INFO [job node_1] completed success
 INFO [step node_1] completed success
-INFO [workflow ] completed success
+INFO [workflow ] completed successs
 ```
 
-## Run your own SNAP graphs
 
-Use the approach provided to run your own SNAP graphs
-
-1. Create your own repo with this one as a template using the URL https://github.com/snap-contrib/cwl-snap-graph-runner/generate
-
-2. Create the SNAP graphs including the variable to be used in the CWL as parameters
-
-3. Write the CWL document to expose the SNAP Graph parameters you want to provide at execution time
-
-4. Write the YAML parameters file 
-
-5. Run the CWL document
