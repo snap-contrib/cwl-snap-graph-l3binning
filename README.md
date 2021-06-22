@@ -53,7 +53,7 @@ Check if SNAP `gpt` utility is available in the container:
 docker run --rm -it snap:latest gpt -h
 ```
 
-This dumps the SNAP `gpt` utiliy help message.
+This dumps the SNAP `gpt` utility help message.
 
 ### Getting a few Sentinel-3 OLCI Level-2 acquistions
 

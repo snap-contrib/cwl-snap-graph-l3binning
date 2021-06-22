@@ -12,7 +12,7 @@ ADD environment.yml /tmp/environment.yml
 
 # Install basic commands and mamba
 RUN apt-get update && \
-    apt-get install -y ca-certificates wget ttf-dejavu file bash bzip2  && \
+    apt-get install -y ca-certificates wget ttf-dejavu file bash bzip2 libgfortran5  && \
     wget -qO- https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj bin/micromamba --strip-components=1 && \
     ./micromamba shell init -s bash -p ~/micromamba  && \
     apt-get clean autoremove --yes  && \
